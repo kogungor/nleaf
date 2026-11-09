@@ -1,0 +1,26 @@
+#!/bin/sh
+# Fake Leaf for the test suite: records how it was started, then idles like the TUI would.
+log="${NLEAF_TEST_LOG:-/dev/null}"
+{
+  printf 'BEGIN\n'
+  printf 'ARGV'
+  for a in "$@"; do printf '\t%s' "$a"; done
+  printf '\n'
+  printf 'LEAF_EDITOR\t%s\n' "${LEAF_EDITOR-}"
+  printf 'KITTY_PID\t%s\n' "${KITTY_PID-<unset>}"
+  printf 'TERM\t%s\n' "${TERM-}"
+  printf 'END\n'
+} >> "$log"
+
+if [ "$1" = "--version" ]; then
+  echo "leaf 0.0.0-fake"
+  exit 0
+fi
+
+if [ -n "$FAKE_LEAF_EXIT" ]; then
+  echo "Error: fake failure for tests" >&2
+  exit "$FAKE_LEAF_EXIT"
+fi
+
+echo "fake leaf running"
+exec sleep 600

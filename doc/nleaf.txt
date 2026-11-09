@@ -1,0 +1,157 @@
+*nleaf.txt*  Real-time Markdown preview with Leaf
+
+==============================================================================
+CONTENTS                                                      *nleaf-contents*
+
+  1. Introduction ............................. |nleaf-intro|
+  2. Commands ................................. |nleaf-commands|
+  3. Mappings ................................. |nleaf-mappings|
+  4. Sync modes ............................... |nleaf-sync|
+  5. Configuration ............................ |nleaf-config|
+  6. Images ................................... |nleaf-image|
+  7. Editor bridge ............................ |nleaf-bridge|
+  8. Lua API .................................. |nleaf-api|
+
+==============================================================================
+1. INTRODUCTION                                                  *nleaf-intro*
+
+nleaf runs Leaf (https://github.com/RivoLink/leaf), a terminal Markdown
+viewer, in a Neovim terminal next to your buffer. The preview follows what you
+type (saved or not), can live in a split, a float or a tab, and Leaf's
+"open in editor" (CTRL-E) jumps back to the line in this Neovim.
+
+Requirements: Neovim 0.10+ and the `leaf` executable (see |:checkhealth|).
+
+nleaf installs no keymaps and works without calling |nleaf.setup()|.
+
+==============================================================================
+2. COMMANDS                                                   *nleaf-commands*
+
+                                                                      *:NLeaf*
+:NLeaf                  Toggle the preview of the current buffer.
+                        - On the previewed buffer or inside the preview:
+                          hide it (Leaf keeps running) or show it again.
+                        - On another previewable buffer: switch to it.
+                        - Otherwise, with no preview: open Leaf's picker.
+
+:NLeaf {layout}         Open the preview in {layout}, or move the running
+                        preview there without restarting Leaf. Running it
+                        again in the same layout hides the preview.
+                        {layout} is one of: float right left bottom top tab
+
+:NLeaf close            Stop Leaf and close the preview.
+
+:NLeaf picker [layout]  Open Leaf's fuzzy file picker; the chosen file is
+                        watched.
+
+:NLeaf diff [args]      Open Leaf's git diff viewer. [args] are passed to
+                        `leaf --diff`, e.g. `cached`, `HEAD~2`, `main..dev`.
+
+:NLeaf image [backend]  Open the image under the cursor with the first
+                        available viewer, or with [backend] (viewim,
+                        snacks, system). See |nleaf-image|.
+
+:NLeaf sync [live|save] Show or switch the sync mode (|nleaf-sync|). A
+                        running buffer preview is restarted in place.
+
+==============================================================================
+3. MAPPINGS                                                   *nleaf-mappings*
+
+Inside the preview, keys go to Leaf: `q` quits Leaf and closes the preview.
+In the preview's Normal mode (leave Terminal mode with CTRL-\ CTRL-N), the
+key in `keys.hide` (default `q`) hides the preview.
+
+Plug mappings, defined for Normal and Terminal mode:
+
+  <Plug>(NLeafToggle)     |:NLeaf|
+  <Plug>(NLeafClose)      |:NLeaf| close
+  <Plug>(NLeafImage)      |:NLeaf| image     (Normal mode only)
+  <Plug>(NLeafFloat)      |:NLeaf| float     (also Right, Left, Bottom,
+                                              Top, Tab)
+
+Example: >lua
+    vim.keymap.set({ "n", "t" }, "<leader>mp", "<Plug>(NLeafToggle)")
+<
+==============================================================================
+4. SYNC MODES                                                     *nleaf-sync*
+
+live    Every edit is mirrored (after `debounce` ms) into a private copy of
+        the buffer in Neovim's temp directory, which Leaf watches. Unsaved
+        and unnamed buffers can be previewed; the real file is never
+        written. Relative links cannot be followed from inside Leaf.
+
+save    Leaf watches the real file and updates when you write it. Relative
+        links work. The buffer must exist on disk.
+
+==============================================================================
+5. CONFIGURATION                                    *nleaf-config* *nleaf.setup()*
+
+Defaults: >lua
+    require("nleaf").setup({
+      cmd = "leaf",
+      args = {},                -- e.g. { "--theme", "forest" }
+      layout = "right",         -- float|right|left|bottom|top|tab
+      size = 0.45,              -- split size: fraction (<= 1) or cells
+      float = { width = 0.85, height = 0.85, border = "rounded", title = true },
+      sync = "live",            -- live|save
+      debounce = 150,           -- ms
+      follow = true,
+      focus = false,            -- splits only; floats and tabs take focus
+      auto_insert = true,
+      filetypes = { "markdown" },
+      editor_bridge = true,
+      keys = { hide = "q" },    -- false to disable
+      image = { backends = { "viewim", "snacks", "system" } },
+    })
+<
+Lists (`args`, `filetypes`, `image.backends`) replace the defaults instead of
+merging.
+
+==============================================================================
+6. IMAGES                                                        *nleaf-image*
+
+Leaf renders images as their alt text only. |:NLeaf| image opens the image
+reference under the cursor (or the nearest one on the line) in a viewer:
+`![alt](src)`, `![alt](<src> "title")`, `[![alt](src)](link)`, `![alt][id]`
+with `[id]: src`, and `<img src="...">`. Relative paths are resolved against
+the Markdown file; http(s) URLs are passed through.
+
+Backends are tried in the order of `image.backends`; a backend that is not
+available, or fails, hands over to the next:
+
+viewim  kogungor/viewim, when it supports the terminal (kitty, WezTerm,
+        Ghostty, iTerm2). Opens a terminal pane/window or the OS viewer.
+snacks  snacks.nvim's `Snacks.image.hover()`, when the terminal supports the
+        kitty graphics protocol and a Markdown treesitter parser exists.
+system  |vim.ui.open()|: the default application for the file or URL.
+
+|:checkhealth| nleaf reports which backend will be used.
+
+==============================================================================
+7. EDITOR BRIDGE                                                *nleaf-bridge*
+
+With `editor_bridge = true`, nleaf sets `$LEAF_EDITOR` for its Leaf process to
+`scripts/bridge.lua`, run by a headless Neovim. When you press CTRL-E in Leaf,
+the script connects to this Neovim (|v:servername|) and jumps to the file and
+line Leaf reports. A float preview hides itself. In live sync the jump goes to
+your buffer, not the private copy.
+
+So that Leaf runs the bridge in place instead of opening a new terminal tab,
+nleaf removes `KITTY_PID`, `GNOME_TERMINAL_SCREEN`, `WT_SESSION` and
+`TERM_PROGRAM` from Leaf's environment.
+
+==============================================================================
+8. LUA API                                                         *nleaf-api*
+
+  require("nleaf").toggle({opts})      {opts}: { layout? }
+  require("nleaf").open({opts})        { buf?, layout? } any normal buffer
+  require("nleaf").picker({opts})      { layout? }
+  require("nleaf").diff({args}, {opts})
+  require("nleaf").image({opts})       { backend? } returns the viewer used
+  require("nleaf").hide()
+  require("nleaf").show({layout})
+  require("nleaf").close()
+  require("nleaf").set_sync({mode})    "live" or "save"
+  require("nleaf").state()             table describing the preview
+
+ vim:tw=78:ts=8:ft=help:norl:
