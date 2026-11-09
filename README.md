@@ -1,196 +1,152 @@
 # nleaf
 
-Real-time Markdown preview for Neovim, rendered by [Leaf](https://github.com/RivoLink/leaf) —
-RivoLink's terminal Markdown viewer — in whichever layout you like.
+I like [Leaf](https://github.com/RivoLink/leaf) for reading Markdown in the terminal and
+wanted it next to the file I'm editing in Neovim. nleaf runs Leaf in a Neovim terminal
+window and keeps it in sync with your buffer, including changes you haven't saved yet.
 
-- **Live preview** of what you type, saved or not. Your file on disk is never touched.
-- **Any layout**: side split (right/left), bottom/top split, centered float or its own tab, and
-  you can move a running preview between them without restarting Leaf.
-- **Follows you**: switch to another Markdown buffer and the preview switches with it.
-- **Ctrl+E goes back to Neovim**: Leaf's "open in editor" jumps to the line you were reading in
-  *this* Neovim, instead of opening a second editor.
-- **Images**: Leaf shows images as alt text only, so `:NLeaf image` opens the image under the
-  cursor with [viewim](https://github.com/kogungor/viewim), snacks.image or your system viewer.
-- Leaf's **file picker** and **git diff viewer** are one command away.
-- No dependencies, no default keymaps, Leaf's error output stays readable when it fails.
+What it does:
 
-## Requirements
+- Shows the preview in a split (right by default), a float or a tab.
+- Updates as you type. Unsaved changes go to a temporary copy, your file is not written.
+- Switches the preview when you move to another Markdown buffer.
+- Ctrl+E in Leaf jumps to that line in your Neovim instead of opening another editor.
+- `:NLeaf image` opens the image under the cursor, since Leaf only shows alt text.
+- Gives you Leaf's file picker and git diff viewer as commands.
 
-- Neovim 0.10+
-- Leaf on `$PATH`:
+It has no dependencies and sets no keymaps.
 
-  ```sh
-  brew install leaf-markdown-viewer    # or: cargo install leaf-markdown-viewer
-  leaf --version
-  ```
+Tested with Leaf 1.29 and Neovim 0.10 to nightly on macOS and Linux. Not tested on Windows.
 
-## Installation
+## Install
 
-[lazy.nvim](https://github.com/folke/lazy.nvim):
+Install Leaf first (the package is called `leaf-markdown-viewer`; `brew install leaf` is an
+unrelated tool):
+
+```sh
+brew install leaf-markdown-viewer   # or: cargo install leaf-markdown-viewer
+```
+
+With [lazy.nvim](https://github.com/folke/lazy.nvim):
 
 ```lua
 {
   "kogungor/nleaf",
   cmd = "NLeaf",
   keys = {
-    { "<leader>mp", "<cmd>NLeaf<cr>", desc = "Markdown preview (Leaf)" },
+    { "<leader>mp", "<cmd>NLeaf<cr>", desc = "Markdown preview" },
+    { "<leader>mi", "<Plug>(NLeafImage)", desc = "Image under cursor" },
   },
-  opts = {}, -- optional, see Configuration
+  opts = {},
 }
 ```
 
-Any other plugin manager works too: nleaf only needs to be on the runtimepath. `setup()` is
-optional.
+Other plugin managers work too. Calling `setup()` is optional. Run `:checkhealth nleaf` if
+something doesn't work.
 
-## Usage
+## Commands
 
-| Command | What it does |
+| Command | |
 |---|---|
-| `:NLeaf` | Toggle the preview of the current buffer (default layout: right split). |
-| `:NLeaf float` / `right` / `left` / `bottom` / `top` / `tab` | Open the preview in that layout, or move the running one there. Running it again in the same layout hides it. |
-| `:NLeaf close` | Stop Leaf and close the preview. |
-| `:NLeaf picker [layout]` | Leaf's fuzzy file picker; the chosen file is watched. |
-| `:NLeaf diff [args]` | Leaf's git diff viewer, e.g. `:NLeaf diff`, `:NLeaf diff cached`, `:NLeaf diff HEAD~2`. |
-| `:NLeaf image [viewim\|snacks\|system]` | Open the image under the cursor (see [Images](#images)). |
-| `:NLeaf sync live` / `save` | Switch sync mode (restarts a running preview). |
-| `:checkhealth nleaf` | Check Neovim, Leaf and the editor bridge. |
+| `:NLeaf` | Toggle the preview for the current buffer |
+| `:NLeaf float` (or `right`, `left`, `bottom`, `top`, `tab`) | Open the preview there, or move it there |
+| `:NLeaf close` | Stop Leaf and close the preview |
+| `:NLeaf image [viewim\|snacks\|system]` | Open the image under the cursor |
+| `:NLeaf picker [layout]` | Leaf's file picker |
+| `:NLeaf diff [args]` | Leaf's git diff viewer, e.g. `:NLeaf diff cached` |
+| `:NLeaf sync live` / `save` | Switch between live preview and update-on-save |
 
-Toggling behaves the way you would expect:
+Toggling hides the preview without stopping Leaf, so it keeps its scroll position. Running
+`:NLeaf` on a different Markdown buffer switches the preview to it. On a non-Markdown buffer
+with nothing open, it opens Leaf's picker.
 
-- On the previewed buffer, or inside the preview: hide it (Leaf keeps running and keeps its
-  scroll position) or show it again.
-- On another Markdown buffer: switch the preview to it.
-- On a non-Markdown buffer with no preview: open Leaf's picker.
+Inside the preview, keys go to Leaf, and `q` quits it. From Normal mode in the preview
+(`<C-\><C-n>`), `q` only hides it.
 
-Inside the preview, keys go to Leaf (`q` quits Leaf and closes the preview). In the preview's
-Normal mode, `q` hides it. Leave Terminal mode with `<C-\><C-n>`.
-
-### Mappings
-
-nleaf installs no keymaps. Map what you need, either with commands or `<Plug>` mappings that
-also work in Terminal mode (so the same key hides the preview from inside it):
+For mappings that also work inside the preview, use the `<Plug>` versions:
 
 ```lua
 vim.keymap.set({ "n", "t" }, "<leader>mp", "<Plug>(NLeafToggle)")
-vim.keymap.set("n", "<leader>mf", "<Plug>(NLeafFloat)")
-vim.keymap.set("n", "<leader>mr", "<Plug>(NLeafRight)")
-vim.keymap.set("n", "<leader>mi", "<Plug>(NLeafImage)")
 ```
 
-Available: `<Plug>(NLeafToggle)`, `<Plug>(NLeafClose)`, `<Plug>(NLeafImage)`, `<Plug>(NLeafFloat)`,
-`<Plug>(NLeafRight)`, `<Plug>(NLeafLeft)`, `<Plug>(NLeafBottom)`, `<Plug>(NLeafTop)`,
-`<Plug>(NLeafTab)`.
+Available: `<Plug>(NLeafToggle)`, `<Plug>(NLeafClose)`, `<Plug>(NLeafImage)`,
+`<Plug>(NLeafFloat)`, `<Plug>(NLeafRight)`, `<Plug>(NLeafLeft)`, `<Plug>(NLeafBottom)`,
+`<Plug>(NLeafTop)`, `<Plug>(NLeafTab)`.
 
-## Sync modes
+## Live and save sync
 
-**`live`** (default): every edit is mirrored, after `debounce` ms, into a private copy of the
-buffer in Neovim's temp directory, and Leaf watches that copy. You see unsaved changes, unnamed
-buffers can be previewed, and your real file is never written. Because Leaf reads the copy,
-*relative* links to other files cannot be followed from inside Leaf in this mode.
+With `sync = "live"` (the default), the buffer is written to a temporary file 150 ms after
+you stop typing and Leaf watches that file. One downside: Leaf can't follow relative links to
+other files from the copy.
 
-**`save`**: Leaf watches the real file, so the preview updates when you `:w`. Relative links
-work. The buffer must exist on disk.
+With `sync = "save"`, Leaf watches the real file and updates when you `:w`. Relative links
+work, but the buffer has to be saved to disk first.
 
-Leaf reloads by checking the file's modification time and size, then shows a short "reloaded"
-notice. If that flickers too much while typing, raise `debounce` (e.g. `400`).
-
-## Configuration
-
-Defaults:
-
-```lua
-require("nleaf").setup({
-  cmd = "leaf",            -- Leaf executable
-  args = {},               -- extra Leaf args, e.g. { "--theme", "forest", "--width", "100" }
-  layout = "right",        -- "float" | "right" | "left" | "bottom" | "top" | "tab"
-  size = 0.45,             -- split size: fraction (<= 1) or columns/lines
-  float = {
-    width = 0.85,          -- fraction (<= 1) or columns
-    height = 0.85,         -- fraction (<= 1) or lines
-    border = "rounded",
-    title = true,          -- "Leaf · README.md · live" in the border
-  },
-  sync = "live",           -- "live" | "save"
-  debounce = 150,          -- ms after the last edit before the live copy is written
-  follow = true,           -- retarget a visible preview when you enter another previewable buffer
-  focus = false,           -- move the cursor into split previews when they open (floats and tabs always get focus)
-  auto_insert = true,      -- enter Terminal mode when the cursor enters the preview
-  filetypes = { "markdown" }, -- what :NLeaf previews; add e.g. "quarto", "rmd"
-  editor_bridge = true,    -- Leaf's Ctrl+E jumps to the line in this Neovim
-  keys = { hide = "q" },   -- Normal-mode key in the preview that hides it (false to disable)
-  image = {
-    backends = { "viewim", "snacks", "system" }, -- tried in order by :NLeaf image
-  },
-})
-```
-
-Leaf's own settings (`leaf --config`, `LEAF_THEME`, …) keep working; `args` is only for
-things you want to force from Neovim.
+Leaf shows a short "reloaded" message on each update. If that bothers you while typing,
+raise `debounce`.
 
 ## Images
 
-Leaf renders `![alt](src)` as its alt text only, and Neovim's built-in terminal cannot show
-terminal graphics anyway. So nleaf opens images *next to* the preview instead: put the cursor
-on an image reference in your Markdown buffer and run `:NLeaf image` (or map
-`<Plug>(NLeafImage)`).
+Leaf prints images as their alt text, and Neovim's terminal can't display images anyway. So
+`:NLeaf image` hands the image under the cursor to the first viewer that works:
 
-It understands `![alt](path)`, `![alt](<path with spaces> "title")`, linked badges
-`[![alt](src)](link)`, reference images `![alt][id]` with `[id]: src`, and HTML
-`<img src="...">`. On a line with several images it takes the one under the cursor, otherwise
-the nearest. Relative paths are resolved against the Markdown file; `http(s)://` URLs are passed
-through.
+1. [viewim](https://github.com/kogungor/viewim), if installed (kitty, WezTerm, Ghostty, iTerm2)
+2. snacks.image, if snacks.nvim is loaded and the terminal supports the kitty graphics
+   protocol (kitty, Ghostty, WezTerm)
+3. your system viewer through `vim.ui.open()`
 
-Viewers are tried in the order of `image.backends`; the first one that is available opens the
-image, and a viewer that fails hands over to the next:
+It finds `![alt](src)`, `![alt](<src with spaces>)`, `[![alt](src)](link)`, `![alt][id]`
+references and `<img src="...">`. Relative paths are resolved from the Markdown file. Change
+the order with `image.backends`, or pick one with `:NLeaf image snacks`.
 
-| Backend | Used when | Shows the image |
-|---|---|---|
-| `viewim` | [kogungor/viewim](https://github.com/kogungor/viewim) is installed and supports your terminal (kitty, WezTerm, Ghostty, iTerm2) | in a terminal pane/window or the OS viewer; also SVG and remote URLs |
-| `snacks` | [snacks.nvim](https://github.com/folke/snacks.nvim) is loaded, the terminal speaks the kitty graphics protocol (kitty, Ghostty, WezTerm) and a Markdown treesitter parser is installed | in a float next to the cursor (`Snacks.image.hover()`) |
-| `system` | always (Neovim 0.10+) | in your default app via `vim.ui.open()` (`open`, `xdg-open`, …) |
+## Ctrl+E
 
-Force one with `:NLeaf image snacks`. `:checkhealth nleaf` shows which viewer will be used and
-why the others are skipped.
+Leaf's Ctrl+E normally opens a second editor. nleaf points Leaf's `$LEAF_EDITOR` at a small
+script that tells your Neovim to jump to the file and line instead. A float preview hides
+itself so you land in the code. Set `editor_bridge = false` to turn this off.
 
-## Editor bridge
+## Configuration
 
-In Leaf, Ctrl+E opens the current file in an editor at the line you are reading. Normally that
-starts a separate editor, either in a new terminal tab or nested inside the preview. With
-`editor_bridge = true` nleaf sets `$LEAF_EDITOR` for its Leaf process to a tiny script that
-asks this Neovim, over its RPC socket, to jump to that file and line. A float preview hides
-itself so you land in the code. In `live` mode the jump goes to your buffer, not the private
-copy.
-
-Set `editor_bridge = false` to keep Leaf's own editor behaviour.
-
-## Lua API
+These are the defaults:
 
 ```lua
-local nleaf = require("nleaf")
-nleaf.toggle({ layout = "float" })     -- layout is optional
-nleaf.open({ buf = 0, layout = "right" }) -- preview any normal buffer, whatever its filetype
-nleaf.picker({ layout = "float" })
-nleaf.diff({ "HEAD~1" })
-nleaf.image({ backend = "viewim" })   -- backend is optional; returns the viewer used
-nleaf.hide()
-nleaf.show("bottom")
-nleaf.close()
-nleaf.set_sync("save")
-nleaf.state() -- { active, visible, layout, kind, source, path, sync, buf, win, job, argv, dead }
+require("nleaf").setup({
+  cmd = "leaf",
+  args = {},                -- extra Leaf args, e.g. { "--theme", "forest" }
+  layout = "right",         -- float, right, left, bottom, top, tab
+  size = 0.45,              -- split size, as a fraction or in columns/lines
+  float = { width = 0.85, height = 0.85, border = "rounded", title = true },
+  sync = "live",            -- live or save
+  debounce = 150,           -- ms
+  follow = true,            -- switch the preview when you enter another Markdown buffer
+  focus = false,            -- put the cursor in split previews when they open
+  auto_insert = true,       -- enter Terminal mode when you go into the preview
+  filetypes = { "markdown" },
+  editor_bridge = true,     -- Ctrl+E in Leaf jumps to the line in Neovim
+  keys = { hide = "q" },    -- set to false to disable
+  image = { backends = { "viewim", "snacks", "system" } },
+})
 ```
+
+Leaf's own config (`leaf --config`) still applies. Use `args` only for things you want to
+set from Neovim.
+
+There is also a Lua API (`toggle`, `open`, `close`, `hide`, `show`, `picker`, `diff`,
+`image`, `set_sync`, `state`); see `:h nleaf-api`.
 
 ## Development
 
 ```sh
-nvim --clean -l tests/run.lua                               # whole suite, uses tests/bin/leaf (a fake Leaf)
-NLEAF_TEST_FILTER="bridge;float" nvim --clean -l tests/run.lua  # only matching tests
+nvim --clean -l tests/run.lua
+NLEAF_TEST_FILTER="bridge;float" nvim --clean -l tests/run.lua
 stylua --check .
 ```
 
+The tests use a fake `leaf` in `tests/bin`, so you don't need Leaf installed to run them.
+
 ## Credits
 
-All the rendering is [Leaf](https://github.com/RivoLink/leaf) by RivoLink. nleaf is an
-independent integration and is not affiliated with the Leaf project.
+The rendering is all [Leaf](https://github.com/RivoLink/leaf) by RivoLink. This plugin is not
+affiliated with the Leaf project.
 
 ## License
 
