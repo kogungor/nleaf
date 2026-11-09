@@ -31,7 +31,7 @@ With [lazy.nvim](https://github.com/folke/lazy.nvim):
 ```lua
 {
   "kogungor/nleaf",
-  cmd = "NLeaf",
+  lazy = false,
   keys = {
     { "<leader>mp", "<cmd>NLeaf<cr>", desc = "Markdown preview" },
     { "<leader>mi", "<Plug>(NLeafImage)", desc = "Image under cursor" },
@@ -39,6 +39,10 @@ With [lazy.nvim](https://github.com/folke/lazy.nvim):
   opts = {},
 }
 ```
+
+There's no need to lazy-load it: at startup nleaf only defines its commands, and the rest
+loads the first time you use it. If you do lazy-load it (with `cmd` or `keys`),
+`:checkhealth nleaf` won't find it until it has been loaded once.
 
 Other plugin managers work too. Calling `setup()` is optional. Run `:checkhealth nleaf` if
 something doesn't work.
