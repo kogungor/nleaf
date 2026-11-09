@@ -27,6 +27,7 @@ M.IMAGE_BACKENDS = { "viewim", "snacks", "system" }
 ---@field editor_bridge boolean Leaf's "open in editor" (Ctrl+E) jumps to the line in this Neovim.
 ---@field keys { hide: string|false } Normal-mode keys inside the preview buffer.
 ---@field image { backends: string[] } Viewers for :NLeaf image, tried in order.
+---@field mouse_scroll boolean The mouse wheel over the preview scrolls Leaf, whatever the focus or mode.
 local defaults = {
   cmd = "leaf",
   args = {},
@@ -40,6 +41,7 @@ local defaults = {
   auto_insert = true,
   filetypes = { "markdown" },
   editor_bridge = true,
+  mouse_scroll = true,
   keys = { hide = "q" },
   image = { backends = { "viewim", "snacks", "system" } },
 }
@@ -96,7 +98,7 @@ local function validate(cfg)
   if not is_string_list(cfg.filetypes) then
     fail("filetypes must be a list of strings")
   end
-  for _, key in ipairs({ "follow", "focus", "auto_insert", "editor_bridge" }) do
+  for _, key in ipairs({ "follow", "focus", "auto_insert", "editor_bridge", "mouse_scroll" }) do
     if type(cfg[key]) ~= "boolean" then
       fail(key .. " must be a boolean")
     end

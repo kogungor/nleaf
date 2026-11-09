@@ -522,6 +522,64 @@ test("no default mappings are installed", function()
   end
 end)
 
+-- Mouse wheel ----------------------------------------------------------------
+
+local preview = require("nleaf.preview")
+
+local function wheel_map(mode)
+  return vim.fn.maparg("<ScrollWheelDown>", mode, false, true)
+end
+
+test("mouse wheel over the preview is sent to Leaf, elsewhere it scrolls normally", function()
+  edit(file("a.md"))
+  nleaf.toggle()
+  local st = nleaf.state()
+  for _, mode in ipairs({ "n", "i", "x" }) do
+    ok((wheel_map(mode).desc or ""):find("^nleaf"), "wheel mapped in mode " .. mode)
+  end
+
+  local sent = {}
+  local real_pos, real_send = vim.fn.getmousepos, vim.fn.chansend
+  vim.fn.chansend = function(job, data)
+    sent[#sent + 1] = { job, data }
+    return #data
+  end
+  vim.fn.getmousepos = function()
+    return { winid = st.win, winrow = 6, wincol = 11 }
+  end
+  local over_preview = preview._wheel("<ScrollWheelDown>")
+  local up = preview._wheel("<ScrollWheelUp>")
+  vim.fn.getmousepos = function()
+    return { winid = api.nvim_get_current_win(), winrow = 2, wincol = 3 }
+  end
+  local over_source = preview._wheel("<ScrollWheelDown>")
+  vim.fn.getmousepos, vim.fn.chansend = real_pos, real_send
+
+  eq(over_preview, "", "no Neovim scrolling over the preview")
+  eq(up, "")
+  eq(sent, { { st.job, "\27[<65;11;6M" }, { st.job, "\27[<64;11;6M" } }, "SGR wheel events at the pointer")
+  eq(over_source, "<ScrollWheelDown>", "default wheel behaviour elsewhere")
+
+  nleaf.close()
+  eq(wheel_map("n"), {}, "mappings removed when the preview closes")
+end)
+
+test("mouse wheel keeps user mappings and can be disabled", function()
+  vim.keymap.set("n", "<ScrollWheelDown>", "<C-e>", { desc = "user wheel" })
+  edit(file("a.md"))
+  nleaf.toggle()
+  eq(wheel_map("n").desc, "user wheel", "user mapping untouched")
+  ok((wheel_map("i").desc or ""):find("^nleaf"), "other modes still mapped")
+  nleaf.close()
+  eq(wheel_map("n").desc, "user wheel", "user mapping survives close")
+  vim.keymap.del("n", "<ScrollWheelDown>")
+
+  config.setup({ mouse_scroll = false })
+  edit(file("a.md"))
+  nleaf.toggle()
+  eq(wheel_map("n"), {}, "mouse_scroll = false installs nothing")
+end)
+
 -- Images ---------------------------------------------------------------------
 
 local image = require("nleaf.image")

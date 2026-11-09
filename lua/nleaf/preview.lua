@@ -115,6 +115,66 @@ local function spawn(argv, win)
   return job
 end
 
+-- Mouse wheel ----------------------------------------------------------------
+--
+-- Neovim forwards mouse events to a terminal job only while that terminal is focused and in
+-- Terminal mode. Over a side preview you usually scroll from the source buffer (or with the
+-- preview in Normal mode), and nothing reaches Leaf. These mappings send the wheel to Leaf
+-- as an SGR mouse event when the pointer is over the preview, and keep the default behaviour
+-- everywhere else. They are only installed where the user has no wheel mapping of their own.
+
+local WHEEL = { ["<ScrollWheelUp>"] = 64, ["<ScrollWheelDown>"] = 65 }
+local WHEEL_MODES = { "n", "i", "x" }
+local WHEEL_DESC = "nleaf: scroll the Leaf preview under the mouse"
+local wheel_installed = false
+
+---Expr-mapping body: forward the wheel to Leaf when the pointer is over the preview.
+---@param lhs string
+---@return string keys
+function M._wheel(lhs)
+  local sess = S
+  if sess and not sess.dead and is_visible() then
+    local pos = vim.fn.getmousepos()
+    if pos.winid == sess.win then
+      local seq = ("\27[<%d;%d;%dM"):format(WHEEL[lhs], math.max(1, pos.wincol), math.max(1, pos.winrow))
+      pcall(vim.fn.chansend, sess.job, seq)
+      return ""
+    end
+  end
+  return lhs
+end
+
+local function install_wheel()
+  if wheel_installed or not config.get().mouse_scroll then
+    return
+  end
+  wheel_installed = true
+  for lhs in pairs(WHEEL) do
+    for _, mode in ipairs(WHEEL_MODES) do
+      if vim.fn.maparg(lhs, mode) == "" then
+        vim.keymap.set(mode, lhs, function()
+          return M._wheel(lhs)
+        end, { expr = true, replace_keycodes = true, desc = WHEEL_DESC })
+      end
+    end
+  end
+end
+
+local function uninstall_wheel()
+  if not wheel_installed then
+    return
+  end
+  wheel_installed = false
+  for lhs in pairs(WHEEL) do
+    for _, mode in ipairs(WHEEL_MODES) do
+      local map = vim.fn.maparg(lhs, mode, false, true)
+      if map.desc == WHEEL_DESC and map.buffer == 0 then
+        pcall(vim.keymap.del, mode, lhs)
+      end
+    end
+  end
+end
+
 local function attach_autocmds(sess)
   local cfg = config.get()
   sess.group = api.nvim_create_augroup("nleaf.session", { clear = true })
@@ -240,6 +300,7 @@ local function start(target, want_layout)
   }
   S = sess
   attach_autocmds(sess)
+  install_wheel()
   if cfg.auto_insert and api.nvim_get_current_win() == win then
     vim.cmd.startinsert()
   end
@@ -275,6 +336,7 @@ function M.close()
   if sess then
     teardown(sess, false)
   end
+  uninstall_wheel()
 end
 
 ---Hide the preview window; Leaf keeps running and keeps its scroll position.

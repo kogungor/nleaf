@@ -72,6 +72,12 @@ Plug mappings, defined for Normal and Terminal mode:
 Example: >lua
     vim.keymap.set({ "n", "t" }, "<leader>mp", "<Plug>(NLeafToggle)")
 <
+                                                          *nleaf-mouse-scroll*
+Neovim forwards the mouse wheel to a terminal only while you type in it. With
+`mouse_scroll = true` (default), nleaf maps <ScrollWheelUp>/<ScrollWheelDown>
+in Normal, Insert and Visual mode while a preview is open: over the preview
+the wheel scrolls Leaf, anywhere else it behaves as usual. Existing wheel
+mappings are left alone, and the mappings are removed when the preview closes.
 ==============================================================================
 4. SYNC MODES                                                     *nleaf-sync*
 
@@ -100,6 +106,7 @@ Defaults: >lua
       auto_insert = true,
       filetypes = { "markdown" },
       editor_bridge = true,
+      mouse_scroll = true,      -- wheel over the preview scrolls Leaf
       keys = { hide = "q" },    -- false to disable
       image = { backends = { "viewim", "snacks", "system" } },
     })

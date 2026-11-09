@@ -13,7 +13,11 @@ What it does:
 - `:NLeaf image` opens the image under the cursor, since Leaf only shows alt text.
 - Gives you Leaf's file picker and git diff viewer as commands.
 
-It has no dependencies and sets no keymaps.
+It has no dependencies and sets no keymaps. The one exception: while a preview is open, the
+mouse wheel over it scrolls Leaf, even when your cursor is in another window. Neovim only
+forwards the wheel to a terminal you're typing in, so without this you'd have to click into
+the preview first. Turn it off with `mouse_scroll = false`; if you already map the wheel,
+nleaf leaves your mapping alone.
 
 Tested with Leaf 1.29 and Neovim 0.10 to nightly on macOS and Linux. Not tested on Windows.
 
@@ -126,6 +130,7 @@ require("nleaf").setup({
   auto_insert = true,       -- enter Terminal mode when you go into the preview
   filetypes = { "markdown" },
   editor_bridge = true,     -- Ctrl+E in Leaf jumps to the line in Neovim
+  mouse_scroll = true,      -- mouse wheel over the preview scrolls Leaf
   keys = { hide = "q" },    -- set to false to disable
   image = { backends = { "viewim", "snacks", "system" } },
 })
