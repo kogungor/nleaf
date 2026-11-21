@@ -122,8 +122,16 @@ end
 -- preview in Normal mode), and nothing reaches Leaf. These mappings send the wheel to Leaf
 -- as an SGR mouse event when the pointer is over the preview, and keep the default behaviour
 -- everywhere else. They are only installed where the user has no wheel mapping of their own.
+-- Sideways wheel events (trackpads) are swallowed over the preview: Leaf has no horizontal
+-- scrolling, and Neovim would shift the terminal window's view instead.
 
-local WHEEL = { ["<ScrollWheelUp>"] = 64, ["<ScrollWheelDown>"] = 65 }
+-- SGR button codes; false = swallow without forwarding.
+local WHEEL = {
+  ["<ScrollWheelUp>"] = 64,
+  ["<ScrollWheelDown>"] = 65,
+  ["<ScrollWheelLeft>"] = false,
+  ["<ScrollWheelRight>"] = false,
+}
 local WHEEL_MODES = { "n", "i", "x" }
 local WHEEL_DESC = "nleaf: scroll the Leaf preview under the mouse"
 local wheel_installed = false
@@ -136,8 +144,10 @@ function M._wheel(lhs)
   if sess and not sess.dead and is_visible() then
     local pos = vim.fn.getmousepos()
     if pos.winid == sess.win then
-      local seq = ("\27[<%d;%d;%dM"):format(WHEEL[lhs], math.max(1, pos.wincol), math.max(1, pos.winrow))
-      pcall(vim.fn.chansend, sess.job, seq)
+      if WHEEL[lhs] then
+        local seq = ("\27[<%d;%d;%dM"):format(WHEEL[lhs], math.max(1, pos.wincol), math.max(1, pos.winrow))
+        pcall(vim.fn.chansend, sess.job, seq)
+      end
       return ""
     end
   end
@@ -283,6 +293,7 @@ local function start(target, want_layout)
     return nil
   end
   vim.bo[buf].filetype = "nleaf"
+  layout.style(win, lay)
 
   ---@type nleaf.Session
   local sess = {

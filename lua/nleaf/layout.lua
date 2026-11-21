@@ -18,7 +18,11 @@ local function has_border(border)
   return border ~= nil and border ~= "" and border ~= "none"
 end
 
-local function style(win, layout)
+---Window options for the preview. Applied again after the terminal starts, because opening a
+---terminal resets some of them.
+---@param win integer
+---@param layout string
+function M.style(win, layout)
   local opts = {
     number = false,
     relativenumber = false,
@@ -31,6 +35,9 @@ local function style(win, layout)
     colorcolumn = "",
     scrolloff = 0,
     sidescrolloff = 0,
+    -- Leaf fills the window exactly, so wrapping changes nothing visible, but it stops Neovim
+    -- from shifting the view sideways (horizontal wheel, cursor moves in Normal mode).
+    wrap = true,
   }
   if layout == "left" or layout == "right" then
     opts.winfixwidth = true
@@ -98,7 +105,7 @@ function M.open(buf, layout, cfg, opts)
     end
     win = api.nvim_open_win(buf, opts.enter, conf)
   end
-  style(win, layout)
+  M.style(win, layout)
   return win
 end
 

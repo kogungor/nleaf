@@ -549,6 +549,7 @@ test("mouse wheel over the preview is sent to Leaf, elsewhere it scrolls normall
   end
   local over_preview = preview._wheel("<ScrollWheelDown>")
   local up = preview._wheel("<ScrollWheelUp>")
+  local sideways = preview._wheel("<ScrollWheelRight>")
   vim.fn.getmousepos = function()
     return { winid = api.nvim_get_current_win(), winrow = 2, wincol = 3 }
   end
@@ -557,11 +558,23 @@ test("mouse wheel over the preview is sent to Leaf, elsewhere it scrolls normall
 
   eq(over_preview, "", "no Neovim scrolling over the preview")
   eq(up, "")
-  eq(sent, { { st.job, "\27[<65;11;6M" }, { st.job, "\27[<64;11;6M" } }, "SGR wheel events at the pointer")
+  eq(sideways, "", "sideways wheel swallowed over the preview")
+  eq(sent, { { st.job, "\27[<65;11;6M" }, { st.job, "\27[<64;11;6M" } }, "SGR wheel events, nothing for sideways")
   eq(over_source, "<ScrollWheelDown>", "default wheel behaviour elsewhere")
 
   nleaf.close()
   eq(wheel_map("n"), {}, "mappings removed when the preview closes")
+end)
+
+test("the preview window cannot scroll sideways", function()
+  edit(file("a.md"))
+  nleaf.toggle()
+  local st = nleaf.state()
+  -- With 'wrap' on, Neovim never scrolls the window horizontally (wheel or cursor).
+  eq(vim.wo[st.win].wrap, true, "wrap set after the terminal started")
+  nleaf.hide()
+  nleaf.show("float")
+  eq(vim.wo[nleaf.state().win].wrap, true, "also when shown again in another layout")
 end)
 
 test("mouse wheel keeps user mappings and can be disabled", function()
